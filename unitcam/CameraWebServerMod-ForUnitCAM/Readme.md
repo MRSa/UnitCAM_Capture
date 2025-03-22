@@ -1,6 +1,6 @@
 # CameraWebServerMod-ForUnitCAM
 
-ESP32 Example の [CameraWebServer](https://github.com/espressif/arduino-esp32/tree/master/libraries/ESP32/examples/Camera/CameraWebServer) を [M5 Unit CAM](https://docs.m5stack.com/en/unit/unit_cam) で動作させるために、微修正してみました。
+ESP32 Example の [CameraWebServer](https://github.com/espressif/arduino-esp32/tree/master/libraries/ESP32/examples/Camera/CameraWebServer) を [M5 Unit CAM](https://docs.m5stack.com/en/unit/unit_cam) で動作させるために、修正してみました。
 
 [U109BB-flat_R3.stl](https://github.com/MRSa/GokigenOSDN_documents/blob/main/images/STL/U109BB-flat_R3.stl "Unit CAM用ベースボード") に、秋月電子通商で販売している[電池ボックス 単3×3本 リード線](https://akizukidenshi.com/catalog/g/g102667/)と一緒に固定させ、 秋月電子通商で販売している [ABS樹脂ケース(蝶番式・中) 117-TM](https://akizukidenshi.com/catalog/g/g107401/) に入れて、[CaseStand_117TM.stl](https://github.com/MRSa/GokigenOSDN_documents/blob/main/images/STL/CaseStand_117TM.stl)のスタンドで横向きで設置し、撮影できるようにしています。
 

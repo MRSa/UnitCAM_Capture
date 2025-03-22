@@ -1,7 +1,7 @@
 #!/bin/bash -f
 
 # ---------------------------------
-TIMER_WAIT_SECONDS=100
+TIMER_WAIT_SECONDS=90
 #TIMER_WAIT_SECONDS=5
 
 while true
@@ -12,18 +12,8 @@ do
     mkdir -p /images/$DATESTR
 
     # ---------------------------------------
-    TARGET_HOST=192.168.19.95
-    HOSTNAME=cam1
-    curl http://$TARGET_HOST/capture --silent --output /images/$DATESTR/pic$DATETIMESTR-$HOSTNAME.jpg
-
-    # ---------------------------------------
-    TARGET_HOST=192.168.19.94
-    HOSTNAME=cam2
-    curl http://$TARGET_HOST/capture --silent --output /images/$DATESTR/pic$DATETIMESTR-$HOSTNAME.jpg
-
-    # ---------------------------------------
-    TARGET_HOST=192.168.19.93
-    HOSTNAME=cam3
+    TARGET_HOST=192.168.20.1
+    HOSTNAME=cam0
     curl http://$TARGET_HOST/capture --silent --output /images/$DATESTR/pic$DATETIMESTR-$HOSTNAME.jpg
 
     # ---------------------------------------
@@ -31,4 +21,3 @@ do
     # ---------------------------------------
 
 done
-
