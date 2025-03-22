@@ -36,6 +36,6 @@ ESP32 Example の [CameraWebServer](https://github.com/espressif/arduino-esp32/t
 
 ## その他
 
-本ソースコードは、 [https://github.com/MRSa/GokigenOSDN_documents/tree/main/miscellaneous/M5/CameraWebServerMod-ForUnitCAM](https://github.com/MRSa/GokigenOSDN_documents/tree/main/miscellaneous/M5/CameraWebServerMod-ForUnitCAM) より管理場所を移動しました。
+本ソースコードは、 [https://github.com/MRSa/GokigenOSDN_documents/tree/main/miscellaneous/M5/CameraWebServerMod-ForUnitCAM](https://github.com/MRSa/GokigenOSDN_documents/tree/main/miscellaneous/M5) より管理場所を移動しました。
 
 以上
