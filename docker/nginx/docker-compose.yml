@@ -1,0 +1,25 @@
+services:
+    nginx:
+        build:
+            context: nginx
+        container_name: nginx
+        privileged: true
+        ports:
+            - "0.0.0.0:8765:80"
+        volumes:
+            - /etc/localtime:/etc/localtime:ro
+            - /usr/share/locale:/usr/share/locale:ro
+            - /data/images:/data/images
+            - ./data/etc/nginx:/etc/nginx
+            - ./data/opt/nginx/cache:/var/cache/nginx
+            - ./data/opt/nginx/html:/usr/share/nginx/html
+            - ./data/opt/nginx/js:/usr/share/nginx/js
+            - ./data/opt/nginx/lua:/usr/share/nginx/lua
+            - ./data/opt/nginx/log:/var/log/nginx
+            - ./data/opt/nginx/lib:/var/lib/nginx
+            - ./data/opt/nginx/run:/run
+        environment:
+          TZ: "Asia/Tokyo"
+          NGINX_PORT: 80
+        user: "1000:998"
+        restart: always

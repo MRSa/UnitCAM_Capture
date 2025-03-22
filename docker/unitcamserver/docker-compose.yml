@@ -1,0 +1,12 @@
+services:
+    unitcam:
+        build:
+            context: unitcam
+        container_name: unitcam
+        privileged: true
+        volumes:
+            - /data/images:/images
+        environment:
+            TZ: "Asia/Tokyo"
+        user: "1000:998"
+        restart: always
