@@ -1283,7 +1283,6 @@ static esp_err_t setpush_handler(httpd_req_t *req)
     }
     if (httpd_query_key_value(buf, "id", device_id, sizeof(device_id)) != ESP_OK ||
         httpd_query_key_value(buf, "interval", report_interval, sizeof(report_interval)) != ESP_OK ||
-        httpd_query_key_value(buf, "count", report_count, sizeof(report_count)) != ESP_OK ||
         httpd_query_key_value(buf, "method", report_method, sizeof(report_method)) != ESP_OK ||
         httpd_query_key_value(buf, "url", report_url, sizeof(report_url)) != ESP_OK
     ) {
@@ -1291,6 +1290,8 @@ static esp_err_t setpush_handler(httpd_req_t *req)
         httpd_resp_send_404(req);
         return ESP_FAIL;
     }
+    memset(report_count, 0x00, sizeof(report_count));
+    httpd_query_key_value(buf, "count", report_count, sizeof(report_count));
     if (httpd_query_key_value(buf, "user", report_user, sizeof(report_user)) != ESP_OK ||
         httpd_query_key_value(buf, "pass", report_pass, sizeof(report_pass)) != ESP_OK)
     {

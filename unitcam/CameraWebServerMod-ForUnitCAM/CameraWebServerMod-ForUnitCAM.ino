@@ -52,7 +52,6 @@
 void startCameraServer();
 void setupLedFlash(int pin);
 
-
 void startWifiAsAccessPointMode()
 {
     const char standalone_ssid[] = "M5UnitCAM";
@@ -70,12 +69,8 @@ void startWifiAsAccessPointMode()
     Serial.println("");
 }
 
-
-void setup() {
-  Serial.begin(115200);
-  Serial.setDebugOutput(true);
-  Serial.println();
-
+void prepareCamera()
+{
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer = LEDC_TIMER_0;
@@ -127,18 +122,17 @@ void setup() {
     config.fb_count = 2;
 #endif
   }
-
-#if defined(CAMERA_MODEL_ESP_EYE)
-  pinMode(13, INPUT_PULLUP);
-  pinMode(14, INPUT_PULLUP);
-#endif
+  Serial.println("prepare camera");
 
   // camera init
-  esp_err_t err = esp_camera_init(&config);
-  if (err != ESP_OK) {
-    Serial.printf("Camera init failed with error 0x%x", err);
+  esp_err_t ret = esp_camera_init(&config);
+  if (ret != ESP_OK)
+  {
+    Serial.printf("Camera init failed with error 0x%x", ret);
     return;
   }
+
+  Serial.println("initialize camera");
 
   sensor_t * s = esp_camera_sensor_get();
   // initial sensors are flipped vertically and colors are a bit saturated
@@ -174,13 +168,12 @@ void setup() {
   s->set_vflip(s, 1);
 #endif
 
-// Setup LED FLash if LED pin is defined in camera_pins.h
-#if defined(LED_GPIO_NUM)
-  setupLedFlash(LED_GPIO_NUM);
-#endif
+}
 
-  Serial.println("");
+void prepareWiFi()
+{
 
+  // ===== Read Wifi Keys
   Preferences preferences;
   preferences.begin("wifi_keys");
   String wifi_ssid = preferences.getString("ssid");
@@ -227,14 +220,127 @@ void setup() {
     }
   }
 
-  startCameraServer();
-
-  Serial.print("Camera Ready! Use 'http://");
-  Serial.print(WiFi.localIP());
-  Serial.println("' to connect");
 }
 
-void loop() {
-  // Do nothing. Everything is done in another task by the web server
+void sendCapturedImage()
+{
+  // ===== Read Connection mode
+  Preferences preferences;
+  preferences.begin("action_mode");
+  bool push_mode = preferences.getBool("push_mode");
+  bool user_pass = preferences.getBool("userpass");
+  String device_id = preferences.getString("id");
+  String report_interval = preferences.getString("interval");
+  String report_count = preferences.getString("count");
+  String report_method = preferences.getString("method");
+  String report_url = preferences.getString("url");
+  String report_user = preferences.getString("user");
+  String report_pass = preferences.getString("pass");
+  preferences.end();
+
+  Serial.println("");
+  Serial.println(" ----- Parameters -----");
+  Serial.print("Mode:");
+  if (push_mode)
+  {
+      Serial.println("Agent (Push)");
+      Serial.print("device name: ");
+      Serial.println(device_id);
+      Serial.print("interval: ");
+      Serial.println(report_interval);
+      Serial.print("count: ");
+      Serial.println(report_count);
+      Serial.print("url: ");
+      Serial.println(report_url);
+    }
+  else
+  {
+      Serial.println("Web Server (Pull)");
+  }
+  Serial.println(" - - - - - - - - - - - ");
+  Serial.println("");
+}
+
+
+void setup()
+{
+  Serial.begin(115200);
+  Serial.setDebugOutput(true);
+  Serial.println("");
+
+  prepareCamera();
+
+#if defined(CAMERA_MODEL_ESP_EYE)
+  pinMode(13, INPUT_PULLUP);
+  pinMode(14, INPUT_PULLUP);
+#endif
+
+// Setup LED FLash if LED pin is defined in camera_pins.h
+#if defined(LED_GPIO_NUM)
+  setupLedFlash(LED_GPIO_NUM);
+#endif
+
+  prepareWiFi();
+
+  Preferences preferences;
+  preferences.begin("action_mode");
+  bool push_mode = preferences.getBool("push_mode");
+  String report_interval = preferences.getString("interval");
+  preferences.end();
+
+  if (push_mode)
+  {
+    // ----- Agent(PUSH) MODE
+    Serial.println("Agent (Push) Mode");
+    sendCapturedImage();
+
+/*    
+    unsigned long interval = atoi(report_interval.c_str()) * 1000UL;
+    if (interval <= 0)
+    {
+      interval = 120UL;
+    }
+    delay(3 * 1000); // wait 3 sec.
+    Serial.print("... Enter Deep Sleep ... ");
+    Serial.print(interval);
+    Serial.println(" sec.");
+    Serial.println("");
+    ESP.deepSleep(interval * 1000 * 1000UL);
+    delay(1000);
+*/
+    }
+  else
+  {
+    // ----- Web Server(PULL) MODE
+    Serial.println("Web Server (Pull) Mode");
+    startCameraServer();
+    Serial.print("Camera Ready! Use 'http://");
+    Serial.print(WiFi.localIP());
+    Serial.println("' to connect");
+  }
+}
+
+void loop()
+{
   delay(10000);
+
+  Preferences preferences;
+  preferences.begin("action_mode");
+  bool push_mode = preferences.getBool("push_mode");
+  String report_interval = preferences.getString("interval");
+  preferences.end();
+  if (push_mode)
+  {
+    Serial.println(" LOOP: Agent (Push) Mode");
+    sendCapturedImage();
+
+    unsigned long interval = atoi(report_interval.c_str()) * 1000UL;
+    if (interval <= 0)
+    {
+      interval = 120UL;
+    }
+    esp_sleep_enable_timer_wakeup(interval * 1000000); // -----
+    esp_light_sleep_start();
+    delay(3000);
+  }
 }
