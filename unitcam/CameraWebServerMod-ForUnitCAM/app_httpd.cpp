@@ -1,3 +1,5 @@
+#include <dummy.h>
+
 // Copyright 2015-2016 Espressif Systems (Shanghai) PTE LTD
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -1262,6 +1264,175 @@ static esp_err_t clearwifi_handler(httpd_req_t *req)
     return (resp);
 }
 
+static esp_err_t setpush_handler(httpd_req_t *req)
+{
+    static char json_response[2048];
+
+    bool isSpecifiedUserPass = false;
+    char *buf = NULL;
+    char device_id[48];
+    char report_interval[48];
+    char report_count[48];
+    char report_method[48];
+    char report_url[128];
+    char report_user[48];
+    char report_pass[48];
+
+    if (parse_get(req, &buf) != ESP_OK) {
+        return ESP_FAIL;
+    }
+    if (httpd_query_key_value(buf, "id", device_id, sizeof(device_id)) != ESP_OK ||
+        httpd_query_key_value(buf, "interval", report_interval, sizeof(report_interval)) != ESP_OK ||
+        httpd_query_key_value(buf, "count", report_count, sizeof(report_count)) != ESP_OK ||
+        httpd_query_key_value(buf, "method", report_method, sizeof(report_method)) != ESP_OK ||
+        httpd_query_key_value(buf, "url", report_url, sizeof(report_url)) != ESP_OK
+    ) {
+        free(buf);
+        httpd_resp_send_404(req);
+        return ESP_FAIL;
+    }
+    if (httpd_query_key_value(buf, "user", report_user, sizeof(report_user)) != ESP_OK ||
+        httpd_query_key_value(buf, "pass", report_pass, sizeof(report_pass)) != ESP_OK)
+    {
+        isSpecifiedUserPass = false;
+    }
+    else
+    {
+        isSpecifiedUserPass = true;
+    }
+    free(buf);
+
+    Preferences preferences;
+    preferences.begin("action_mode");
+    preferences.putBool("push_mode", true);
+    preferences.putString("id", String(device_id));
+    preferences.putString("interval", String(report_interval));
+    preferences.putString("count", String(report_count));
+    preferences.putString("method", String(report_method));
+    preferences.putString("url", String(report_url));
+    preferences.putBool("userpass", isSpecifiedUserPass);
+    if (isSpecifiedUserPass)
+    {
+        preferences.putString("user", String(report_user));
+        preferences.putString("pass", String(report_pass));
+    }
+    else
+    {
+        preferences.putString("user", String(""));
+        preferences.putString("pass", String(""));
+    }
+    preferences.end();
+
+    char *p = json_response;
+    *p++ = '{';
+    p += sprintf(p, "\"result\":\"OK\"");
+    *p++ = '}';
+    *p++ = 0;
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    return (httpd_resp_send(req, json_response, strlen(json_response)));
+}
+
+static esp_err_t clearmode_handler(httpd_req_t *req)
+{
+    static char json_response[1024];
+
+    bool isReset = false;
+    bool pushMode = false;
+    char *buf = NULL;
+    char is_reset[48];
+    char keep_mode[48];
+
+    if (parse_get(req, &buf) != ESP_OK) {
+        return ESP_FAIL;
+    }
+    if (httpd_query_key_value(buf, "keep", keep_mode, sizeof(keep_mode)) != ESP_OK)
+    {
+        isReset = false; // keepが指定されていた ... データはクリアしない
+    }
+    if (httpd_query_key_value(buf, "reset", is_reset, sizeof(is_reset)) == ESP_OK)
+    {
+        isReset = true;  // reset が指定されていた ... データをクリアする
+    }
+    free(buf);
+
+    Preferences preferences;
+    preferences.begin("action_mode");
+    preferences.putBool("push_mode", pushMode);
+    if (isReset)
+    {
+        preferences.putString("id", String(""));
+        preferences.putString("interval", String(""));
+        preferences.putString("count", String(""));
+        preferences.putString("method", String(""));
+        preferences.putString("url", String(""));
+        preferences.putBool("userpass", false);
+        preferences.putString("user", String(""));
+        preferences.putString("pass", String(""));
+    }
+    preferences.end();
+
+    char *p = json_response;
+    *p++ = '{';
+    p += sprintf(p, "\"result\":\"OK\"");
+    *p++ = '}';
+    *p++ = 0;
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    return (httpd_resp_send(req, json_response, strlen(json_response)));
+}
+
+static esp_err_t chkmode_handler(httpd_req_t *req)
+{
+    static char json_response[2048];
+
+    Preferences preferences;
+    preferences.begin("action_mode");
+    bool push_mode = preferences.getBool("push_mode");
+    bool user_pass = preferences.getBool("userpass");
+    String device_id = preferences.getString("id");
+    String report_interval = preferences.getString("interval");
+    String report_count = preferences.getString("count");
+    String report_method = preferences.getString("method");
+    String report_url = preferences.getString("url");
+    String report_user = preferences.getString("user");
+    String report_pass = preferences.getString("pass");
+    preferences.end();
+
+    char *p = json_response;
+    *p++ = '{';
+    p += sprintf(p, "\"result\":\"OK\",");
+    if (push_mode)
+    {
+        p += sprintf(p, "\"mode\":\"PUSH\",");
+    }
+    else
+    {
+        p += sprintf(p, "\"mode\":\"PULL\",");
+    }
+    p += sprintf(p, "\"id\":\"%s\",", device_id.c_str());
+    p += sprintf(p, "\"interval\":\"%s\",", report_interval.c_str());
+    p += sprintf(p, "\"count\":\"%s\",", report_count.c_str());
+    p += sprintf(p, "\"method\":\"%s\",", report_method.c_str());
+    p += sprintf(p, "\"url\":\"%s\",", report_url.c_str());
+    if (user_pass)
+    {
+        p += sprintf(p, "\"auth\":\"TRUE\",");
+    }
+    else
+    {
+        p += sprintf(p, "\"auth\":\"FALSE\",");
+    }
+    p += sprintf(p, "\"user\":\"%s\",", report_user.c_str());
+    p += sprintf(p, "\"pass\":\"%s\"", report_pass.c_str());
+    *p++ = '}';
+    *p++ = 0;
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    esp_err_t resp = httpd_resp_send(req, json_response, strlen(json_response));
+    return (resp);
+}
+
 static esp_err_t win_handler(httpd_req_t *req)
 {
     char *buf = NULL;
@@ -1317,7 +1488,7 @@ static esp_err_t index_handler(httpd_req_t *req)
 void startCameraServer()
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.max_uri_handlers = 16;
+    config.max_uri_handlers = 20;
 
     httpd_uri_t index_uri = {
         .uri = "/",
@@ -1514,6 +1685,45 @@ void startCameraServer()
 #endif
     };
 
+    httpd_uri_t setpush_uri = {
+        .uri = "/setpush",
+        .method = HTTP_GET,
+        .handler = setpush_handler,
+        .user_ctx = NULL
+#ifdef CONFIG_HTTPD_WS_SUPPORT
+        ,
+        .is_websocket = true,
+        .handle_ws_control_frames = false,
+        .supported_subprotocol = NULL
+#endif
+    };
+
+    httpd_uri_t clearmode_uri = {
+        .uri = "/clearmode",
+        .method = HTTP_GET,
+        .handler = clearmode_handler,
+        .user_ctx = NULL
+#ifdef CONFIG_HTTPD_WS_SUPPORT
+        ,
+        .is_websocket = true,
+        .handle_ws_control_frames = false,
+        .supported_subprotocol = NULL
+#endif
+    }; 
+
+    httpd_uri_t chkmode_uri = {
+        .uri = "/chkmode",
+        .method = HTTP_GET,
+        .handler = chkmode_handler,
+        .user_ctx = NULL
+#ifdef CONFIG_HTTPD_WS_SUPPORT
+        ,
+        .is_websocket = true,
+        .handle_ws_control_frames = false,
+        .supported_subprotocol = NULL
+#endif
+    };
+
     ra_filter_init(&ra_filter, 20);
 
 #if CONFIG_ESP_FACE_RECOGNITION_ENABLED
@@ -1540,6 +1750,9 @@ void startCameraServer()
         httpd_register_uri_handler(camera_httpd, &chkwifi_uri);
         httpd_register_uri_handler(camera_httpd, &setwifi_uri);
         httpd_register_uri_handler(camera_httpd, &clearwifi_uri);
+        httpd_register_uri_handler(camera_httpd, &setpush_uri);
+        httpd_register_uri_handler(camera_httpd, &clearmode_uri);
+        httpd_register_uri_handler(camera_httpd, &chkmode_uri);
     }
 
     config.server_port += 1;
@@ -1554,8 +1767,9 @@ void startCameraServer()
 void setupLedFlash(int pin) 
 {
     #if CONFIG_LED_ILLUMINATOR_ENABLED
-    ledcSetup(LED_LEDC_CHANNEL, 5000, 8);
-    ledcAttachPin(pin, LED_LEDC_CHANNEL);
+    //ledcSetup(LED_LEDC_CHANNEL, 5000, 8);
+    //ledcAttachPin(pin, LED_LEDC_CHANNEL);
+    ledcAttach(pin, 5000, 8);
     #else
     log_i("LED flash is disabled -> CONFIG_LED_ILLUMINATOR_ENABLED = 0");
     #endif
