@@ -294,8 +294,7 @@ void setup()
     Serial.println("Agent (Push) Mode");
     sendCapturedImage();
 
-/*    
-    unsigned long interval = atoi(report_interval.c_str()) * 1000UL;
+    unsigned long interval = atoi(report_interval.c_str());
     if (interval <= 0)
     {
       interval = 120UL;
@@ -305,9 +304,11 @@ void setup()
     Serial.print(interval);
     Serial.println(" sec.");
     Serial.println("");
-    ESP.deepSleep(interval * 1000 * 1000UL);
+    //ESP.deepSleep(interval * 1000 * 1000UL);
+    esp_sleep_enable_timer_wakeup(interval * 1000 * 1000UL);
+    esp_deep_sleep_start();
     delay(1000);
-*/
+
     }
   else
   {
@@ -339,8 +340,8 @@ void loop()
     {
       interval = 120UL;
     }
-    esp_sleep_enable_timer_wakeup(interval * 1000000); // -----
-    esp_light_sleep_start();
+    //esp_sleep_enable_timer_wakeup(interval * 1000000); // -----
+    //esp_light_sleep_start();
     delay(3000);
   }
 }
