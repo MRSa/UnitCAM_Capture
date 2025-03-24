@@ -49,6 +49,8 @@
 
 #define LED_GPIO_NUM       4  // NORMAL LED (Unit CAM)
 
+RTC_DATA_ATTR int bootCount = 0;
+
 void startCameraServer();
 void setupLedFlash(int pin);
 
@@ -286,12 +288,27 @@ void setup()
   preferences.begin("action_mode");
   bool push_mode = preferences.getBool("push_mode");
   String report_interval = preferences.getString("interval");
+  String report_count = preferences.getString("count");
   preferences.end();
 
-  if (push_mode)
+  unsigned long reportCount = atoi(report_count.c_str());
+  if (reportCount <= 0)
+  {
+    reportCount = 0;
+  }
+  bootCount++;
+
+  Serial.print(" boot: ");
+  Serial.print(bootCount);
+  Serial.print(" report:");
+  Serial.print(reportCount);
+  Serial.println("");
+  if ((push_mode)&&((reportCount == 0)||(bootCount < reportCount)))
   {
     // ----- Agent(PUSH) MODE
-    Serial.println("Agent (Push) Mode");
+    Serial.print("Agent (Push) Mode (boot count : ");
+    Serial.print(bootCount);
+    Serial.println(")");
     sendCapturedImage();
 
     unsigned long interval = atoi(report_interval.c_str());
@@ -299,20 +316,23 @@ void setup()
     {
       interval = 120UL;
     }
-    delay(3 * 1000); // wait 3 sec.
+
+    // accept commands...
+    startCameraServer();
+    delay(3 * 1000); // wait 3 sec to change another mode.
     Serial.print("... Enter Deep Sleep ... ");
     Serial.print(interval);
     Serial.println(" sec.");
     Serial.println("");
-    //ESP.deepSleep(interval * 1000 * 1000UL);
+
     esp_sleep_enable_timer_wakeup(interval * 1000 * 1000UL);
     esp_deep_sleep_start();
     delay(1000);
-
-    }
+  }
   else
   {
     // ----- Web Server(PULL) MODE
+    bootCount = 0;
     Serial.println("Web Server (Pull) Mode");
     startCameraServer();
     Serial.print("Camera Ready! Use 'http://");
@@ -324,24 +344,4 @@ void setup()
 void loop()
 {
   delay(10000);
-
-  Preferences preferences;
-  preferences.begin("action_mode");
-  bool push_mode = preferences.getBool("push_mode");
-  String report_interval = preferences.getString("interval");
-  preferences.end();
-  if (push_mode)
-  {
-    Serial.println(" LOOP: Agent (Push) Mode");
-    sendCapturedImage();
-
-    unsigned long interval = atoi(report_interval.c_str()) * 1000UL;
-    if (interval <= 0)
-    {
-      interval = 120UL;
-    }
-    //esp_sleep_enable_timer_wakeup(interval * 1000000); // -----
-    //esp_light_sleep_start();
-    delay(3000);
-  }
 }
