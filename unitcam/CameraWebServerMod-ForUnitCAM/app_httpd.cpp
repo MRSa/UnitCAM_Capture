@@ -1285,7 +1285,6 @@ static esp_err_t setpush_handler(httpd_req_t *req)
     }
     if (httpd_query_key_value(buf, "id", device_id, sizeof(device_id)) != ESP_OK ||
         httpd_query_key_value(buf, "interval", report_interval, sizeof(report_interval)) != ESP_OK ||
-        httpd_query_key_value(buf, "method", report_method, sizeof(report_method)) != ESP_OK ||
         httpd_query_key_value(buf, "url", report_url, sizeof(report_url)) != ESP_OK
     ) {
         free(buf);
@@ -1294,6 +1293,8 @@ static esp_err_t setpush_handler(httpd_req_t *req)
     }
     memset(report_count, 0x00, sizeof(report_count));
     httpd_query_key_value(buf, "count", report_count, sizeof(report_count));
+    memset(report_method, 0x00, sizeof(report_method));
+    httpd_query_key_value(buf, "method", report_method, sizeof(report_method));
     if (httpd_query_key_value(buf, "user", report_user, sizeof(report_user)) != ESP_OK ||
         httpd_query_key_value(buf, "pass", report_pass, sizeof(report_pass)) != ESP_OK)
     {
@@ -1780,7 +1781,7 @@ void setupLedFlash(int pin)
 
 void httpSendCapturedImage()
 {
-  // -------------------------
+  // ------------------------- GET PREFERENCES START
   Preferences preferences;
   preferences.begin("action_mode");
   bool push_mode = preferences.getBool("push_mode");
@@ -1793,14 +1794,10 @@ void httpSendCapturedImage()
   String report_user = preferences.getString("user");
   String report_pass = preferences.getString("pass");
   preferences.end();
-  // -------------------------
+  // ------------------------- GET PREFERENCES END
 
   camera_fb_t *fb = NULL;
   esp_err_t res = ESP_OK;
-
-#if ARDUHAL_LOG_LEVEL >= ARDUHAL_LOG_LEVEL_INFO
-  int64_t fr_start = esp_timer_get_time();
-#endif
 
   ////////////////////////////////////////////////////
   fb = esp_camera_fb_get();
@@ -1828,20 +1825,37 @@ void httpSendCapturedImage()
     return;
   }
 
-  //httpd_resp_set_type(req, "image/jpeg");
-  //httpd_resp_set_hdr(req, "Content-Disposition", "inline; filename=capture.jpg");
-  //httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-
-  //char ts[32];
-  //snprintf(ts, 32, "%ld.%06ld", fb->timestamp.tv_sec, fb->timestamp.tv_usec);
-  //httpd_resp_set_hdr(req, "X-Timestamp", (const char *)ts);
 
   if (fb->format == PIXFORMAT_JPEG)
   {
-    //res = httpd_resp_send(req, (const char *)fb->buf, fb->len);
-    log_i("Captured a camera image.");
+    String report_url_with_filename = report_url + "pic-" + device_id + ".jpg";
+    log_i("Send a caputured image.");
 
-    Serial.println("::::: CAPTURED IMAGE :::::");
+    HTTPClient http;
+    if (http.begin(report_url_with_filename))
+    {
+        http.addHeader("Content-Type", "image/jpeg");
+        http.addHeader("Content-Disposition", "inline; filename=capture.jpg");
+        char ts[32];
+        snprintf(ts, 32, "%ld.%06ld", fb->timestamp.tv_sec, fb->timestamp.tv_usec);
+        http.addHeader("X-Timestamp", ts);
+        int httpResponseCode = http.PUT(fb->buf, fb->len);
+        http.end();
+
+        Serial.println("::::: SEND CAPTURED JPEG IMAGE :::::");
+        Serial.println(report_url_with_filename);
+        Serial.print(" ");
+        Serial.print(fb->len);
+        Serial.println(" bytes.");
+        Serial.print(" RESPONSE: ");
+        Serial.println(httpResponseCode);
+        Serial.println("");
+    }
+    else
+    {
+        Serial.print(" Image Send Failure: ");
+        Serial.println(report_url);     
+    }
   }
   else
   {
