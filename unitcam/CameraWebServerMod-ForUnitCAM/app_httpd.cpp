@@ -1,4 +1,6 @@
+
 #include <dummy.h>
+#include <HTTPClient.h>
 
 // Copyright 2015-2016 Espressif Systems (Shanghai) PTE LTD
 //
@@ -1774,4 +1776,77 @@ void setupLedFlash(int pin)
     #else
     log_i("LED flash is disabled -> CONFIG_LED_ILLUMINATOR_ENABLED = 0");
     #endif
+}
+
+void httpSendCapturedImage()
+{
+  // -------------------------
+  Preferences preferences;
+  preferences.begin("action_mode");
+  bool push_mode = preferences.getBool("push_mode");
+  bool user_pass = preferences.getBool("userpass");
+  String device_id = preferences.getString("id");
+  String report_interval = preferences.getString("interval");
+  String report_count = preferences.getString("count");
+  String report_method = preferences.getString("method");
+  String report_url = preferences.getString("url");
+  String report_user = preferences.getString("user");
+  String report_pass = preferences.getString("pass");
+  preferences.end();
+  // -------------------------
+
+  camera_fb_t *fb = NULL;
+  esp_err_t res = ESP_OK;
+
+#if ARDUHAL_LOG_LEVEL >= ARDUHAL_LOG_LEVEL_INFO
+  int64_t fr_start = esp_timer_get_time();
+#endif
+
+  ////////////////////////////////////////////////////
+  fb = esp_camera_fb_get();
+  if (!fb)
+  {
+    log_e("Camera capture failed (1st)");
+    return;
+  }
+  esp_camera_fb_return(fb);
+  vTaskDelay(200 / portTICK_PERIOD_MS);
+  ////////////////////////////////////////////////////
+
+#if CONFIG_LED_ILLUMINATOR_ENABLED
+    enable_led(true);
+    vTaskDelay(150 / portTICK_PERIOD_MS); // The LED needs to be turned on ~150ms before the call to esp_camera_fb_get()
+    fb = esp_camera_fb_get();             // or it won't be visible in the frame. A better way to do this is needed.
+    enable_led(false);
+#else
+    fb = esp_camera_fb_get();
+#endif
+
+  if (!fb)
+  {
+    log_e("Camera capture failed (2nd).");
+    return;
+  }
+
+  //httpd_resp_set_type(req, "image/jpeg");
+  //httpd_resp_set_hdr(req, "Content-Disposition", "inline; filename=capture.jpg");
+  //httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+
+  //char ts[32];
+  //snprintf(ts, 32, "%ld.%06ld", fb->timestamp.tv_sec, fb->timestamp.tv_usec);
+  //httpd_resp_set_hdr(req, "X-Timestamp", (const char *)ts);
+
+  if (fb->format == PIXFORMAT_JPEG)
+  {
+    //res = httpd_resp_send(req, (const char *)fb->buf, fb->len);
+    log_i("Captured a camera image.");
+
+    Serial.println("::::: CAPTURED IMAGE :::::");
+  }
+  else
+  {
+    log_e("The camera capture format is not JPEG.");
+  }
+  esp_camera_fb_return(fb);
+  return;
 }

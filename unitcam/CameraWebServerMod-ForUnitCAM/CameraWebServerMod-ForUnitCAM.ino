@@ -53,6 +53,7 @@ RTC_DATA_ATTR int bootCount = 0;
 
 void startCameraServer();
 void setupLedFlash(int pin);
+void httpSendCapturedImage();
 
 void startWifiAsAccessPointMode()
 {
@@ -303,13 +304,14 @@ void setup()
   Serial.print(" report:");
   Serial.print(reportCount);
   Serial.println("");
-  if ((push_mode)&&((reportCount == 0)||(bootCount < reportCount)))
+  if ((push_mode)&&((reportCount == 0)||(bootCount <= reportCount)))
   {
     // ----- Agent(PUSH) MODE
     Serial.print("Agent (Push) Mode (boot count : ");
     Serial.print(bootCount);
     Serial.println(")");
-    sendCapturedImage();
+    //sendCapturedImage();
+    httpSendCapturedImage();
 
     unsigned long interval = atoi(report_interval.c_str());
     if (interval <= 0)
@@ -317,15 +319,15 @@ void setup()
       interval = 120UL;
     }
 
-    // accept commands...
+    Serial.println("... Wait for a while... ");
     startCameraServer();
-    delay(3 * 1000); // wait 3 sec to change another mode.
+    delay(2 * 1000); // wait 2 sec to change another mode.
     Serial.print("... Enter Deep Sleep ... ");
     Serial.print(interval);
     Serial.println(" sec.");
     Serial.println("");
 
-    esp_sleep_enable_timer_wakeup(interval * 1000 * 1000UL);
+    esp_sleep_enable_timer_wakeup(interval * 1000 * 1000ULL);
     esp_deep_sleep_start();
     delay(1000);
   }
