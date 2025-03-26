@@ -49,11 +49,13 @@
 
 #define LED_GPIO_NUM       4  // NORMAL LED (Unit CAM)
 
+#define MAX_PUSH_SEND_ERROR_LIMIT 10
 RTC_DATA_ATTR int bootCount = 0;
+RTC_DATA_ATTR int pushSendErrorCount = 0;
 
 void startCameraServer();
 void setupLedFlash(int pin);
-void httpSendCapturedImage();
+int httpSendCapturedImage();
 
 void startWifiAsAccessPointMode()
 {
@@ -225,46 +227,6 @@ void prepareWiFi()
 
 }
 
-void sendCapturedImage()
-{
-  // ===== Read Connection mode
-  Preferences preferences;
-  preferences.begin("action_mode");
-  bool push_mode = preferences.getBool("push_mode");
-  bool user_pass = preferences.getBool("userpass");
-  String device_id = preferences.getString("id");
-  String report_interval = preferences.getString("interval");
-  String report_count = preferences.getString("count");
-  String report_method = preferences.getString("method");
-  String report_url = preferences.getString("url");
-  String report_user = preferences.getString("user");
-  String report_pass = preferences.getString("pass");
-  preferences.end();
-
-  Serial.println("");
-  Serial.println(" ----- Parameters -----");
-  Serial.print("Mode:");
-  if (push_mode)
-  {
-      Serial.println("Agent (Push)");
-      Serial.print("device name: ");
-      Serial.println(device_id);
-      Serial.print("interval: ");
-      Serial.println(report_interval);
-      Serial.print("count: ");
-      Serial.println(report_count);
-      Serial.print("url: ");
-      Serial.println(report_url);
-    }
-  else
-  {
-      Serial.println("Web Server (Pull)");
-  }
-  Serial.println(" - - - - - - - - - - - ");
-  Serial.println("");
-}
-
-
 void setup()
 {
   Serial.begin(115200);
@@ -299,19 +261,32 @@ void setup()
   }
   bootCount++;
 
+  Serial.println("-=-=-=-");
   Serial.print(" boot: ");
   Serial.print(bootCount);
   Serial.print(" report:");
   Serial.print(reportCount);
-  Serial.println("");
-  if ((push_mode)&&((reportCount == 0)||(bootCount <= reportCount)))
+  Serial.print(" sendError:");
+  Serial.print(pushSendErrorCount);
+  Serial.println("-=-=-=-");
+  if ((push_mode)&&(pushSendErrorCount < MAX_PUSH_SEND_ERROR_LIMIT)&&((reportCount == 0)||(bootCount <= reportCount)))
   {
     // ----- Agent(PUSH) MODE
     Serial.print("Agent (Push) Mode (boot count : ");
     Serial.print(bootCount);
     Serial.println(")");
-    //sendCapturedImage();
-    httpSendCapturedImage();
+
+    if (httpSendCapturedImage() < 0)
+    {
+      pushSendErrorCount++;
+      Serial.print("SEND IMAGE(PUSH) ERROR (count: ");
+      Serial.print(pushSendErrorCount);
+      Serial.println(")");
+    }
+    else
+    {
+      pushSendErrorCount = 0;
+    }
 
     unsigned long interval = atoi(report_interval.c_str());
     if (interval <= 0)
@@ -335,6 +310,7 @@ void setup()
   {
     // ----- Web Server(PULL) MODE
     bootCount = 0;
+    pushSendErrorCount = 0;
     Serial.println("Web Server (Pull) Mode");
     startCameraServer();
     Serial.print("Camera Ready! Use 'http://");

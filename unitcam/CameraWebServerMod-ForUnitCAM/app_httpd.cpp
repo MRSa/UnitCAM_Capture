@@ -1279,6 +1279,7 @@ static esp_err_t setpush_handler(httpd_req_t *req)
     char report_url[128];
     char report_user[48];
     char report_pass[48];
+    char ext_mode[48];
 
     if (parse_get(req, &buf) != ESP_OK) {
         return ESP_FAIL;
@@ -1295,6 +1296,8 @@ static esp_err_t setpush_handler(httpd_req_t *req)
     httpd_query_key_value(buf, "count", report_count, sizeof(report_count));
     memset(report_method, 0x00, sizeof(report_method));
     httpd_query_key_value(buf, "method", report_method, sizeof(report_method));
+    memset(ext_mode, 0x00, sizeof(ext_mode));
+    httpd_query_key_value(buf, "ext", ext_mode, sizeof(ext_mode));
     if (httpd_query_key_value(buf, "user", report_user, sizeof(report_user)) != ESP_OK ||
         httpd_query_key_value(buf, "pass", report_pass, sizeof(report_pass)) != ESP_OK)
     {
@@ -1314,6 +1317,7 @@ static esp_err_t setpush_handler(httpd_req_t *req)
     preferences.putString("count", String(report_count));
     preferences.putString("method", String(report_method));
     preferences.putString("url", String(report_url));
+    preferences.putString("ext", String(ext_mode));
     preferences.putBool("userpass", isSpecifiedUserPass);
     if (isSpecifiedUserPass)
     {
@@ -1370,6 +1374,7 @@ static esp_err_t clearmode_handler(httpd_req_t *req)
         preferences.putString("count", String(""));
         preferences.putString("method", String(""));
         preferences.putString("url", String(""));
+        preferences.putString("ext", String(""));
         preferences.putBool("userpass", false);
         preferences.putString("user", String(""));
         preferences.putString("pass", String(""));
@@ -1401,6 +1406,7 @@ static esp_err_t chkmode_handler(httpd_req_t *req)
     String report_url = preferences.getString("url");
     String report_user = preferences.getString("user");
     String report_pass = preferences.getString("pass");
+    String ext_mode = preferences.getString("ext");
     preferences.end();
 
     char *p = json_response;
@@ -1417,18 +1423,22 @@ static esp_err_t chkmode_handler(httpd_req_t *req)
     p += sprintf(p, "\"id\":\"%s\",", device_id.c_str());
     p += sprintf(p, "\"interval\":\"%s\",", report_interval.c_str());
     p += sprintf(p, "\"count\":\"%s\",", report_count.c_str());
-    p += sprintf(p, "\"method\":\"%s\",", report_method.c_str());
     p += sprintf(p, "\"url\":\"%s\",", report_url.c_str());
-    if (user_pass)
+    if (ext_mode.length() > 0)
     {
-        p += sprintf(p, "\"auth\":\"TRUE\",");
+        p += sprintf(p, "\"method\":\"%s\",", report_method.c_str());
+        p += sprintf(p, "\"ext\":\"%s\",", ext_mode.c_str());
+        if (user_pass)
+        {
+            p += sprintf(p, "\"auth\":\"TRUE\",");
+        }
+        else
+        {
+            p += sprintf(p, "\"auth\":\"FALSE\",");
+        }
+        p += sprintf(p, "\"user\":\"%s\",", report_user.c_str());
+        p += sprintf(p, "\"pass\":\"%s\"", report_pass.c_str());
     }
-    else
-    {
-        p += sprintf(p, "\"auth\":\"FALSE\",");
-    }
-    p += sprintf(p, "\"user\":\"%s\",", report_user.c_str());
-    p += sprintf(p, "\"pass\":\"%s\"", report_pass.c_str());
     *p++ = '}';
     *p++ = 0;
     httpd_resp_set_type(req, "application/json");
@@ -1779,7 +1789,7 @@ void setupLedFlash(int pin)
     #endif
 }
 
-void httpSendCapturedImage()
+int httpSendCapturedImage()
 {
   // ------------------------- GET PREFERENCES START
   Preferences preferences;
@@ -1793,6 +1803,7 @@ void httpSendCapturedImage()
   String report_url = preferences.getString("url");
   String report_user = preferences.getString("user");
   String report_pass = preferences.getString("pass");
+  String ext_mode = preferences.getString("ext");
   preferences.end();
   // ------------------------- GET PREFERENCES END
 
@@ -1804,7 +1815,7 @@ void httpSendCapturedImage()
   if (!fb)
   {
     log_e("Camera capture failed (1st)");
-    return;
+    return (-1);
   }
   esp_camera_fb_return(fb);
   vTaskDelay(200 / portTICK_PERIOD_MS);
@@ -1822,10 +1833,10 @@ void httpSendCapturedImage()
   if (!fb)
   {
     log_e("Camera capture failed (2nd).");
-    return;
+    return (-1);
   }
 
-
+  int httpResponseCode = 0;
   if (fb->format == PIXFORMAT_JPEG)
   {
     String report_url_with_filename = report_url + "pic-" + device_id + ".jpg";
@@ -1839,7 +1850,7 @@ void httpSendCapturedImage()
         char ts[32];
         snprintf(ts, 32, "%ld.%06ld", fb->timestamp.tv_sec, fb->timestamp.tv_usec);
         http.addHeader("X-Timestamp", ts);
-        int httpResponseCode = http.PUT(fb->buf, fb->len);
+        httpResponseCode = http.PUT(fb->buf, fb->len);
         http.end();
 
         Serial.println("::::: SEND CAPTURED JPEG IMAGE :::::");
@@ -1854,7 +1865,8 @@ void httpSendCapturedImage()
     else
     {
         Serial.print(" Image Send Failure: ");
-        Serial.println(report_url);     
+        Serial.println(report_url); 
+        httpResponseCode = -1;
     }
   }
   else
@@ -1862,5 +1874,5 @@ void httpSendCapturedImage()
     log_e("The camera capture format is not JPEG.");
   }
   esp_camera_fb_return(fb);
-  return;
+  return (httpResponseCode);
 }
