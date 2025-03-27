@@ -18,6 +18,9 @@ ESP32 Example の [CameraWebServer](https://github.com/espressif/arduino-esp32/t
   * 設定したパスワードが間違っていた場合は、アクセスポイントモードでSSIDとパスワードを再設定してみてください。
 * httpのコマンドで、再起動できるようにしました。
   * 再起動後、新しいWi-Fiの設定が有効になります。( [http://192.168.20.1/restart](http://192.168.20.1/restart) で Unit CAMが再起動します。)
+* httpのコマンドで、一定周期で画像をPUTで送信することができるようにしました。
+  * 送信後、2秒間待機状態となりますので、そこでhttpコマンドを送信し設定を変更して停止させることができます。
+  * 送信先は、[https://github.com/MRSa/UnitCAM_Capture/tree/main/docker/nginx](https://github.com/MRSa/UnitCAM_Capture/tree/main/docker/nginx) のnginx コンテナを想定しています。
 
 この対応により、Wi-Fi の SSID と パスワードを変更したくなったときに その都度 Arduino IDEでコンパイルし、Unit CAMにアップロードする必要がなくなりました。
 
@@ -33,6 +36,12 @@ ESP32 Example の [CameraWebServer](https://github.com/espressif/arduino-esp32/t
   * Unit CAMの現在のWi-Fi設定をJSON形式で応答します。Wi-Fi設定が正しく行われているか、確認にご使用ください。
 * [http://192.168.20.1/restart](http://192.168.20.1/restart)
   * Unit CAMを再起動させます。 Wi-Fiの設定を変更した場合にご使用ください。
+* [http://192.168.20.1/setpush?id=XXXXX&interval=YYYY&count=ZZZZZ&url=http://ooo.ooo.ooo.ooo:8765/dav/](setpush?id=XXXXX&interval=YYYY&count=ZZZZZ&url=http://ooo.ooo.ooo.ooo:8765/dav/)
+  * Unit CAMを再起動した後、キャプチャした画像を [http://ooo.ooo.ooo.ooo:8765/dav/](http://ooo.ooo.ooo.ooo:8765/dav/) へ YYYY秒間隔でZZZZ回送信します。　ZZZZ を 0 に設定すると、無限に送信します。 id としてXXXXX を指定できます。
+* [http://192.168.20.1/clearmode?reset=true](http://192.168.20.1/clearmode?reset=true)
+  * 画像を送信する設定をクリアします。コマンドが受け付けられたら、restartでUnit CAMを再起動してください。
+* [http://192.168.20.1/chkmode](http://192.168.20.1/chkmode)
+  * Unit CAMの現在の設定内容を JSON形式で応答します。送信先設定の確認などにお使いください。
 
 ## その他
 
