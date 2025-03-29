@@ -37,7 +37,7 @@ ESP32 Example の [CameraWebServer](https://github.com/espressif/arduino-esp32/t
 * [http://192.168.20.1/restart](http://192.168.20.1/restart)
   * Unit CAMを再起動させます。 Wi-Fiの設定を変更した場合にご使用ください。
 * [http://192.168.20.1/setpush?id=XXXXX&interval=YYYY&count=ZZZZZ&url=http://ooo.ooo.ooo.ooo:8765/dav/](setpush?id=XXXXX&interval=YYYY&count=ZZZZZ&url=http://ooo.ooo.ooo.ooo:8765/dav/)
-  * Unit CAMを再起動した後、キャプチャした画像を [http://ooo.ooo.ooo.ooo:8765/dav/](http://ooo.ooo.ooo.ooo:8765/dav/) へ YYYY秒間隔でZZZZ回送信します。　ZZZZ を 0 に設定すると、無限に送信します。 id としてXXXXX を指定できます。
+  * Unit CAMを再起動した後、キャプチャした画像を [http://ooo.ooo.ooo.ooo:8765/dav/pic-XXXXX.jpg](http://ooo.ooo.ooo.ooo:8765/dav/pic-XXXXX.jpg) へ http PUT で YYYY秒間隔 ZZZZ回送信します。　ZZZZ を 0 に設定すると、無限に送信します。なお、XXXXX は、 id として指定した文字列です。
 * [http://192.168.20.1/clearmode?reset=true](http://192.168.20.1/clearmode?reset=true)
   * 画像を送信する設定をクリアします。コマンドが受け付けられたら、restartでUnit CAMを再起動してください。
 * [http://192.168.20.1/chkmode](http://192.168.20.1/chkmode)

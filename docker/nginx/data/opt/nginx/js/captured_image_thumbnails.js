@@ -26,6 +26,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     const absoluteHref = new URL(href, window.location.href).href;
                     img.src = absoluteHref;
                     img.className = 'thumbnail';
+                    const filename = href.substring(href.lastIndexOf('/') + 1);
+                    img.title = filename;
                     thumbnailsDiv.appendChild(img);
                 }
             });
